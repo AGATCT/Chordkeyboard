@@ -14,8 +14,12 @@ ChordKeyboard 是一款在浏览器中运行的简单演奏工具，允许通过
 - `5` → G
 - `6` → Am
 - `7` → Bdim
+- `Q` → Cm
+- `W` → D
 - `E` → E (大三和弦)
 - `D` → E7
+- `R` → Fm
+- `T` → Gm
 - `Y` → A (大三和弦)
 
 运行方法：
@@ -30,9 +34,5 @@ ChordKeyboard 是一款在浏览器中运行的简单演奏工具，允许通过
 
 音色说明：
 1
-- 当前实现已集成 `soundfont-player`（方案 B），优先使用 SoundFont 采样播放：
-	- 钢琴：`acoustic_grand_piano`（更自然的钢琴音色）
-	- 弦乐：`violin`（单弦乐器示例，可换为其它 SoundFont 名称）
+- 当前实现已集成 `soundfont-player`（方案 B），优先使用 SoundFont 采样播放。
 - 若浏览器或网络无法加载 SoundFont，则回退到基于 `OscillatorNode` 的合成音色。
-
-如果你想要更高质量的音色（如多力度分层采样或完整 SoundFont / FluidSynth 支持），我可以继续帮你集成 FluidSynth WASM 或引入更完整的 SoundFont 文件。
