@@ -1,0 +1,60 @@
+html,
+body {
+    height: 100%;
+    margin: 0;
+    font-family: Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    background: #f7f7f8;
+    color: #222
+}
+
+main {
+    max-width: 760px;
+    margin: 40px auto;
+    padding: 24px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .06)
+}
+
+h1 {
+    margin: 0 0 12px;
+    font-size: 22px
+}
+
+.controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 16px
+}
+
+.controls label {
+    font-size: 14px
+}
+
+#mapping {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+    margin-top: 8px
+}
+
+.map-item {
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    background: #fafafa;
+    font-size: 14px
+}
+
+.map-item.active {
+    border-color: #4f46e5;
+    background: linear-gradient(90deg, #eef2ff, #f8f7ff);
+    color: #111
+}
+
+#status {
+    margin-top: 14px;
+    font-size: 13px;
+    color: #555
+}

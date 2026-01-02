@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>ChordKeyboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <main>
+        <h1>ChordKeyboard</h1>
+        <div class="controls">
+            <label>主音（移调）
+                <select id="tonic">
+                </select>
+            </label>
+            <label>音色
+                <select id="voice">
+                    <option value="piano">钢琴</option>
+                    <option value="strings">弦乐</option>
+                </select>
+            </label>
+        </div>
+
+        <div id="mapping"></div>
+        <div id="status">按下映射键演奏和弦（打开浏览器控制台可查看调试信息）。</div>
+    </main>
+
+    <script src="main.js"></script>
+    <!-- soundfont-player: 从 CDN 加载，用于更真实的钢琴/弦乐音色 -->
+    <!-- <script src="https://unpkg.com/soundfont-player@0.15.5/dist/soundfont-player.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/soundfont-player@0.12.0/dist/soundfont-player.min.js"></script>
+</body>
+
+</html>
