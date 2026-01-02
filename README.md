@@ -1,9 +1,9 @@
 # ChordKeyboard
-ChordKeyboard 是在浏览器中运行的简单演奏工具，允许通过电脑键盘演奏预设和弦。
+ChordKeyboard是适用于首调唱名的和弦演奏工具。浏览器中运行，允许通过电脑键盘演奏预设的和弦。
 
 功能：
 - 两种音色：钢琴（piano）与弦乐（strings）。
-- 支持按键直接触发和弦，并可通过选择主音（移调）改变全部和弦的音高。
+- 支持按键直接触发和弦，并可通过选择主音（移调）和音域（移八度）改变全部和弦的音高。
 
 默认键位映射：
 - `1` → C
@@ -13,6 +13,9 @@ ChordKeyboard 是在浏览器中运行的简单演奏工具，允许通过电脑
 - `5` → G
 - `6` → Am
 - `7` → Bdim
+
+- `0` → Gsus4
+
 - `Q` → Cm
 - `W` → D
 - `E` → E
@@ -20,6 +23,10 @@ ChordKeyboard 是在浏览器中运行的简单演奏工具，允许通过电脑
 - `R` → Fm
 - `T` → Gm
 - `Y` → A
+
+- `A` → C7
+
+其他未说明或未更新的键位请以页面显示为准。
 
 运行方法：
 
@@ -29,5 +36,5 @@ ChordKeyboard 是在浏览器中运行的简单演奏工具，允许通过电脑
 
 
 音色说明：
-- 当前实现已集成 `soundfont-player`（方案 B），优先使用 SoundFont 采样播放。
+- 默认音源来源：[soundfont-player](https://github.com/danigb/soundfont-player)。感谢该项目提供的高质量乐器采样。
 - 若浏览器或网络无法加载 SoundFont，则回退到基于 `OscillatorNode` 的合成音色。

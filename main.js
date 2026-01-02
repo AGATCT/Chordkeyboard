@@ -14,19 +14,33 @@
     const chordMap = {
         '1': { name: 'C', offs: [0, 4, 7] },
         'q': { name: 'Cm', offs: [0, 3, 7] },
+        'a': { name: 'C7', offs: [0, 4, 7, 10] },
+
+
         '2': { name: 'Dm', offs: [2, 5, 9] },
         'w': { name: 'D', offs: [2, 6, 9] },
+        's': { name: 'Dm7', offs: [2, 6, 9, 12] },
+
+
         '3': { name: 'Em', offs: [4, 7, 11] },
         'e': { name: 'E', offs: [4, 8, 11] },
+        'd': { name: 'Em7', offs: [4, 7, 11, 14] },
         'd': { name: 'E7', offs: [4, 8, 11, 14] },
+
         '4': { name: 'F', offs: [5, 9, 12] },
         'r': { name: 'Fm', offs: [5, 9, 12] },
+        'f': { name: 'Fmaj7', offs: [5, 9, 12, 16] },
+
         '5': { name: 'G', offs: [7, 11, 14] },
         't': { name: 'Gm', offs: [7, 10, 14] },
         'g': { name: 'G7', offs: [7, 11, 14, 17] },
+
         '6': { name: 'Am', offs: [9, 12, 16] },
         'y': { name: 'A', offs: [9, 13, 16] },
-        '7': { name: 'Bdim', offs: [11, 14, 17] }
+
+        '7': { name: 'Bdim', offs: [11, 14, 17] },
+
+        '0': { name: 'Gsus4', offs: [7, 12, 14] }
     };
 
     const tonicSelect = document.getElementById('tonic');
