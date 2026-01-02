@@ -30,6 +30,7 @@
     };
 
     const tonicSelect = document.getElementById('tonic');
+    const octaveSelect = document.getElementById('octave');
     const voiceSelect = document.getElementById('voice');
     const mappingEl = document.getElementById('mapping');
     const statusEl = document.getElementById('status');
@@ -109,6 +110,7 @@
         if (!info) return;
         
         const tonic = +tonicSelect.value;
+        const octave = +octaveSelect.value;
         const voice = voiceSelect.value;
         
         // 更新状态
@@ -134,7 +136,7 @@
                 const inst = await loadInstrument(instName);
                 
                 offs.forEach((o, i) => {
-                    const midi = baseMidiC4 + o + tonic;
+                    const midi = baseMidiC4 + o + tonic + octave;
                     const note = midiToNoteName(midi);
                     inst.play(note, now, { 
                         gain: 0.85 / (i + 1),
@@ -148,13 +150,13 @@
         }
         
         // 回退到 Oscillator
-        playChordFallback(offs, tonic, voice);
+        playChordFallback(offs, tonic, octave, voice);
     }
     
-    function playChordFallback(offs, tonic, voice) {
+    function playChordFallback(offs, tonic, octave, voice) {
         const now = ctx.currentTime;
         offs.forEach((o, i) => {
-            const midi = baseMidiC4 + o + tonic;
+            const midi = baseMidiC4 + o + tonic + octave;
             const freq = midiToFreq(midi);
             const osc = ctx.createOscillator();
             const g = ctx.createGain();
