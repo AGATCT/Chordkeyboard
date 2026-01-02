@@ -19,24 +19,28 @@
 
         '2': { name: 'Dm', offs: [2, 5, 9] },
         'w': { name: 'D', offs: [2, 6, 9] },
-        's': { name: 'Dm7', offs: [2, 6, 9, 12] },
+        's': { name: 'D', offs: [2, 6, 9, 12] },
+        'x': { name: 'Dm7', offs: [2, 5, 9, 12] },
 
 
         '3': { name: 'Em', offs: [4, 7, 11] },
         'e': { name: 'E', offs: [4, 8, 11] },
+        'c': { name: 'E7', offs: [4, 8, 11, 14] },
         'd': { name: 'Em7', offs: [4, 7, 11, 14] },
-        'd': { name: 'E7', offs: [4, 8, 11, 14] },
+        
 
         '4': { name: 'F', offs: [5, 9, 12] },
         'r': { name: 'Fm', offs: [5, 9, 12] },
-        'f': { name: 'Fmaj7', offs: [5, 9, 12, 16] },
 
         '5': { name: 'G', offs: [7, 11, 14] },
         't': { name: 'Gm', offs: [7, 10, 14] },
         'g': { name: 'G7', offs: [7, 11, 14, 17] },
+        'b': { name: 'Gm7', offs: [7, 10, 14, 17] },
 
         '6': { name: 'Am', offs: [9, 12, 16] },
         'y': { name: 'A', offs: [9, 13, 16] },
+        'h': { name: 'A7', offs: [9, 13, 16, 19] },
+        'n': { name: 'Am7', offs: [9, 12, 16, 19] },
 
         '7': { name: 'Bdim', offs: [11, 14, 17] },
 
