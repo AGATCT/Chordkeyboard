@@ -125,6 +125,32 @@
         return inst;
     }
 
+    // 停止和弦（用于弦乐音色）
+    function stopChord(key) {
+        const notes = activePlayingNotes.get(key);
+        if (!notes) return;
+        
+        const now = ctx.currentTime;
+        notes.forEach(node => {
+            try {
+                if (node.stop) {
+                    node.stop(now);
+                } else if (node.gain) {
+                    // fallback模式：停止oscillator
+                    node.gain.gain.cancelScheduledValues(now);
+                    node.gain.gain.setValueAtTime(0, now);
+                    if (node.osc) {
+                        node.osc.stop(now);
+                    }
+                }
+            } catch (e) {
+                // 忽略已停止的节点错误
+                console.debug('停止音符时出错（可能已停止）:', e);
+            }
+        });
+        activePlayingNotes.delete(key);
+    }
+    
     // 播放和弦
     async function playChord(key) {
         const info = chordMap[key];
@@ -134,8 +160,27 @@
         const octave = +octaveSelect.value;
         const voice = voiceSelect.value;
         
+        // 如果是弦乐音色，先停止之前播放的音符
+        if (voice === 'strings') {
+            stopChord(key);
+        }
+        
+        // 计算临时八度调整
+        let tempOctaveOffset = 0;
+        if (modifierKeys.arrowUp) {
+            tempOctaveOffset += 12; // 升高一个八度
+        }
+        if (modifierKeys.arrowDown) {
+            tempOctaveOffset -= 12; // 降低一个八度
+        }
+        
+        const offs = info.offs;
+        
         // 更新状态
-        statusEl.textContent = `播放：${info.name}（键 ${key.toUpperCase()}）`;
+        let statusText = `播放：${info.name}（键 ${key.toUpperCase()}）`;
+        if (modifierKeys.arrowUp) statusText += ' ↑+1八度';
+        if (modifierKeys.arrowDown) statusText += ' ↓-1八度';
+        statusEl.textContent = statusText;
         
         // 确保音频已初始化
         if (!isInitialized) {
@@ -148,7 +193,7 @@
         }
         
         const now = ctx.currentTime;
-        const offs = info.offs;
+        const playingNotes = [];
         
         // 尝试使用 soundfont
         if (soundfontAvailable) {
@@ -157,13 +202,22 @@
                 const inst = await loadInstrument(instName);
                 
                 offs.forEach((o, i) => {
-                    const midi = baseMidiC4 + o + tonic + octave;
+                    const midi = baseMidiC4 + o + tonic + octave + tempOctaveOffset;
                     const note = midiToNoteName(midi);
-                    inst.play(note, now, { 
-                        gain: 0.85 / (i + 1),
-                        duration: 2
-                    });
+                    const playOptions = voice === 'strings' 
+                        ? { gain: 0.85 / (i + 1) } // 弦乐：不设置duration，持续播放
+                        : { gain: 0.85 / (i + 1), duration: 2 }; // 钢琴：设置duration
+                    
+                    const audioNode = inst.play(note, now, playOptions);
+                    if (voice === 'strings' && audioNode) {
+                        playingNotes.push(audioNode);
+                    }
                 });
+                
+                // 如果是弦乐音色，存储播放的音符
+                if (voice === 'strings' && playingNotes.length > 0) {
+                    activePlayingNotes.set(key, playingNotes);
+                }
                 return;
             } catch (err) {
                 console.warn('Soundfont 播放失败，使用回退音色:', err);
@@ -171,11 +225,16 @@
         }
         
         // 回退到 Oscillator
-        playChordFallback(offs, tonic, octave, voice);
+        const fallbackNotes = playChordFallback(offs, tonic, octave + tempOctaveOffset, voice, voice === 'strings');
+        if (voice === 'strings' && fallbackNotes.length > 0) {
+            activePlayingNotes.set(key, fallbackNotes);
+        }
     }
     
-    function playChordFallback(offs, tonic, octave, voice) {
+    function playChordFallback(offs, tonic, octave, voice, isSustained = false) {
         const now = ctx.currentTime;
+        const nodes = [];
+        
         offs.forEach((o, i) => {
             const midi = baseMidiC4 + o + tonic + octave;
             const freq = midiToFreq(midi);
@@ -197,14 +256,27 @@
             
             osc.type = type; 
             osc.frequency.value = freq;
-            g.gain.setValueAtTime(0.0001, now);
-            g.gain.linearRampToValueAtTime(0.9 / (i + 1), now + attack);
-            g.gain.exponentialRampToValueAtTime(0.0001, now + attack + release);
+            
+            if (isSustained) {
+                // 弦乐音色：持续播放，不自动停止
+                g.gain.setValueAtTime(0.0001, now);
+                g.gain.linearRampToValueAtTime(0.9 / (i + 1), now + attack);
+                g.gain.setValueAtTime(0.9 / (i + 1), now + attack + 0.01);
+                nodes.push({ osc, gain: g });
+            } else {
+                // 钢琴音色：自动停止
+                g.gain.setValueAtTime(0.0001, now);
+                g.gain.linearRampToValueAtTime(0.9 / (i + 1), now + attack);
+                g.gain.exponentialRampToValueAtTime(0.0001, now + attack + release);
+                osc.stop(now + attack + release + 0.05);
+            }
+            
             osc.connect(g);
             g.connect(ctx.destination);
             osc.start(now);
-            osc.stop(now + attack + release + 0.05);
         });
+        
+        return nodes;
     }
 
     // QWERTY 键盘布局（标准布局）
@@ -259,8 +331,44 @@
 
     const activeSet = new Set();
     
+    // 存储正在播放的音符（仅用于弦乐音色，以便在释放键时停止）
+    const activePlayingNotes = new Map(); // key -> Array of audio nodes/notes
+    
+    // 修饰键状态追踪
+    const modifierKeys = {
+        arrowUp: false,
+        arrowDown: false
+    };
+    
+    // 重新播放所有当前按下的和弦（用于修饰键变化时）
+    async function replayActiveChords() {
+        for (const key of activeSet) {
+            await playChord(key);
+        }
+    }
+    
     // 键盘事件处理
     window.addEventListener('keydown', async (ev) => {
+        // 处理修饰键
+        if (ev.key === 'ArrowUp') {
+            if (!modifierKeys.arrowUp) {
+                modifierKeys.arrowUp = true;
+                // 重新播放当前按下的和弦
+                await replayActiveChords();
+            }
+            ev.preventDefault();
+            return;
+        }
+        if (ev.key === 'ArrowDown') {
+            if (!modifierKeys.arrowDown) {
+                modifierKeys.arrowDown = true;
+                // 重新播放当前按下的和弦
+                await replayActiveChords();
+            }
+            ev.preventDefault();
+            return;
+        }
+        
         if (ev.repeat) return;
         
         const k = ev.key.toLowerCase();
@@ -279,9 +387,35 @@
         }
     });
     
-    window.addEventListener('keyup', (ev) => {
+    window.addEventListener('keyup', async (ev) => {
+        // 处理修饰键释放
+        if (ev.key === 'ArrowUp') {
+            if (modifierKeys.arrowUp) {
+                modifierKeys.arrowUp = false;
+                // 重新播放当前按下的和弦，恢复音高
+                await replayActiveChords();
+            }
+            ev.preventDefault();
+            return;
+        }
+        if (ev.key === 'ArrowDown') {
+            if (modifierKeys.arrowDown) {
+                modifierKeys.arrowDown = false;
+                // 重新播放当前按下的和弦，恢复音高
+                await replayActiveChords();
+            }
+            ev.preventDefault();
+            return;
+        }
+        
         const k = ev.key.toLowerCase(); 
         activeSet.delete(k); 
+        
+        // 如果是弦乐音色，停止正在播放的音符
+        const voice = voiceSelect.value;
+        if (voice === 'strings') {
+            stopChord(k);
+        }
         
         // 更新键盘可视化
         const keyEl = document.getElementById('key-' + k);
