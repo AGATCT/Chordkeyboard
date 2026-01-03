@@ -32,29 +32,100 @@ h1 {
     font-size: 14px
 }
 
-#mapping {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 8px;
-    margin-top: 8px
-}
-
-.map-item {
-    padding: 10px;
-    border: 1px solid #eee;
-    border-radius: 6px;
-    background: #fafafa;
-    font-size: 14px
-}
-
-.map-item.active {
-    border-color: #4f46e5;
-    background: linear-gradient(90deg, #eef2ff, #f8f7ff);
-    color: #111
-}
-
 #status {
     margin-top: 14px;
     font-size: 13px;
     color: #555
+}
+
+#keyboard-visualization {
+    margin: 24px 0;
+    padding: 20px;
+    background: #fafafa;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+.keyboard-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.keyboard-row {
+    display: flex;
+    gap: 4px;
+    justify-content: flex-start;
+}
+
+.keyboard-key {
+    position: relative;
+    min-width: 40px;
+    height: 40px;
+    background: #fff;
+    border: 2px solid #d1d5db;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: #374151;
+    transition: all 0.1s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.keyboard-key.mapped {
+    background: linear-gradient(135deg, #eef2ff 0%, #f0f9ff 100%);
+    border-color: #818cf8;
+}
+
+.keyboard-key.pressed {
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    border-color: #312e81;
+    color: #fff;
+    transform: translateY(2px);
+    box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
+}
+
+.keyboard-key.pressed .key-label,
+.keyboard-key.pressed .chord-label {
+    color: #fff;
+}
+
+.key-label {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.chord-label {
+    font-size: 10px;
+    color: #6366f1;
+    font-weight: 500;
+    margin-top: 2px;
+}
+
+.keyboard-key.mapped .key-label {
+    color: #4f46e5;
+}
+
+/* 特殊键的宽度调整 */
+.keyboard-key[id="key-\\"] {
+    min-width: 60px;
+}
+
+.keyboard-key[id="key-`"] {
+    min-width: 50px;
+}
+
+.keyboard-key[id="key-Tab"],
+.keyboard-key[id="key-Caps"],
+.keyboard-key[id="key-Shift"] {
+    min-width: 0;
+    width: 0;
+    visibility: hidden;
 }

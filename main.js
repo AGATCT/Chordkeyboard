@@ -25,8 +25,8 @@
 
         '3': { name: 'Em', offs: [4, 7, 11] },
         'e': { name: 'E', offs: [4, 8, 11] },
-        'c': { name: 'E7', offs: [4, 8, 11, 14] },
-        'd': { name: 'Em7', offs: [4, 7, 11, 14] },
+        'd': { name: 'E7', offs: [4, 8, 11, 14] },
+        'c': { name: 'Em7', offs: [4, 7, 11, 14] },
         
 
         '4': { name: 'F', offs: [5, 9, 12] },
@@ -50,8 +50,8 @@
     const tonicSelect = document.getElementById('tonic');
     const octaveSelect = document.getElementById('octave');
     const voiceSelect = document.getElementById('voice');
-    const mappingEl = document.getElementById('mapping');
     const statusEl = document.getElementById('status');
+    const keyboardEl = document.getElementById('keyboard-visualization');
 
     // 初始化选项
     for (let i = 0; i < 12; i++) {
@@ -204,14 +204,55 @@
         });
     }
 
-    // 渲染键位映射
-    Object.keys(chordMap).forEach(k => {
-        const el = document.createElement('div'); 
-        el.className = 'map-item';
-        el.id = 'map-' + k;
-        el.innerHTML = `<strong>${k.toUpperCase()}</strong> → ${chordMap[k].name}`;
-        mappingEl.appendChild(el);
-    });
+    // QWERTY 键盘布局（标准布局）
+    const keyboardLayout = [
+        ['`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='],
+        ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\'],
+        ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\''],
+        ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/']
+    ];
+
+    // 创建可视化键盘
+    function createKeyboardVisualization() {
+        const keyboardContainer = document.createElement('div');
+        keyboardContainer.className = 'keyboard-container';
+        
+        keyboardLayout.forEach((row, rowIndex) => {
+            const rowEl = document.createElement('div');
+            rowEl.className = 'keyboard-row';
+            
+            // 为不同行添加不同的间距
+            if (rowIndex === 1) {
+                rowEl.style.paddingLeft = '1.5em'; // Tab键位置
+            } else if (rowIndex === 2) {
+                rowEl.style.paddingLeft = '2em'; // Caps Lock位置
+            } else if (rowIndex === 3) {
+                rowEl.style.paddingLeft = '3em'; // Shift位置
+            }
+            
+            row.forEach(key => {
+                const keyEl = document.createElement('div');
+                keyEl.className = 'keyboard-key';
+                keyEl.id = 'key-' + key;
+                
+                const keyUpper = key.toUpperCase();
+                keyEl.innerHTML = `<span class="key-label">${keyUpper}</span>`;
+                
+                // 检查这个键是否被映射
+                if (chordMap[key.toLowerCase()]) {
+                    keyEl.classList.add('mapped');
+                    const chordName = chordMap[key.toLowerCase()].name;
+                    keyEl.innerHTML += `<span class="chord-label">${chordName}</span>`;
+                }
+                
+                rowEl.appendChild(keyEl);
+            });
+            
+            keyboardContainer.appendChild(rowEl);
+        });
+        
+        keyboardEl.appendChild(keyboardContainer);
+    }
 
     const activeSet = new Set();
     
@@ -225,8 +266,10 @@
             
             // 激活视觉反馈
             activeSet.add(k);
-            const el = document.getElementById('map-' + k); 
-            if (el) el.classList.add('active');
+            
+            // 更新键盘可视化
+            const keyEl = document.getElementById('key-' + k);
+            if (keyEl) keyEl.classList.add('pressed');
             
             // 播放和弦
             await playChord(k);
@@ -236,20 +279,17 @@
     window.addEventListener('keyup', (ev) => {
         const k = ev.key.toLowerCase(); 
         activeSet.delete(k); 
-        const el = document.getElementById('map-' + k); 
-        if (el) el.classList.remove('active');
-    });
-
-    // 点击事件处理
-    mappingEl.addEventListener('click', async (ev) => {
-        const it = ev.target.closest('.map-item'); 
-        if (!it) return; 
-        const k = it.id.replace('map-', ''); 
-        await playChord(k);
+        
+        // 更新键盘可视化
+        const keyEl = document.getElementById('key-' + k);
+        if (keyEl) keyEl.classList.remove('pressed');
     });
 
     // 页面加载完成后的初始化
     document.addEventListener('DOMContentLoaded', () => {
+        // 创建键盘可视化
+        createKeyboardVisualization();
+        
         // 更新状态提示
         statusEl.textContent = '点击任意和弦或按键盘键开始演奏（需要用户交互激活音频）';
         
