@@ -2,7 +2,7 @@
 
 > English version is available at the end of the document.
 
-ChordKeyboard是适用于首调唱名的和弦演奏工具。浏览器中运行，允许通过电脑键盘演奏预设的和弦。
+ChordKeyboard是适用于首调唱名法的和弦演奏工具。浏览器中运行，允许通过电脑键盘演奏预设的和弦。
 - 使用电脑键直接触发和弦。
 - 支持两种音色：钢琴（piano）与弦乐（strings）。
 - 可通过选择主音（移调）和音域（移八度）改变全部和弦的音高。
@@ -46,7 +46,7 @@ ChordKeyboard是适用于首调唱名的和弦演奏工具。浏览器中运行�
 
 ## English Version
 
-ChordKeyboard is a chord-playing tool designed for movable-do solfège. It runs in a web browser and allows playing preset chords using a computer keyboard.  
+ChordKeyboard is a chord-playing tool designed for Movable-do system. It runs in a web browser and allows playing preset chords using a computer keyboard.  
 - Use computer keys to trigger chords directly.  
 - Supports two timbres: piano and strings.  
 - The pitch of all chords can be changed by selecting the tonic (transposition) and range (octave shift).  
