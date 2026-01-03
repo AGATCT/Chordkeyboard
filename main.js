@@ -15,11 +15,12 @@
         '1': { name: 'C', offs: [0, 4, 7] },
         'q': { name: 'Cm', offs: [0, 3, 7] },
         'a': { name: 'C7', offs: [0, 4, 7, 10] },
+        'z': { name: 'Cm7', offs: [0, 3, 7, 10] },
 
 
         '2': { name: 'Dm', offs: [2, 5, 9] },
         'w': { name: 'D', offs: [2, 6, 9] },
-        's': { name: 'D', offs: [2, 6, 9, 12] },
+        's': { name: 'D7', offs: [2, 6, 9, 12] },
         'x': { name: 'Dm7', offs: [2, 5, 9, 12] },
 
 
@@ -30,7 +31,9 @@
         
 
         '4': { name: 'F', offs: [5, 9, 12] },
-        'r': { name: 'Fm', offs: [5, 9, 12] },
+        'r': { name: 'Fm', offs: [5, 8, 12] },
+        'f': { name: 'F7', offs: [5, 9, 12, 15] },
+        'v': { name: 'Fm7', offs: [5, 8, 12, 15] },
 
         '5': { name: 'G', offs: [7, 11, 14] },
         't': { name: 'Gm', offs: [7, 10, 14] },
