@@ -55,6 +55,28 @@
                     </select>
                 </section>
 
+                <section class="control-slider control-slider-inversion" aria-label="和弦转位设置">
+                    <button type="button" id="inversion-toggle" class="control-trigger" aria-expanded="false" aria-controls="inversion-editor">
+                        <span class="control-trigger-label">转位</span>
+                        <span id="inversion-current" class="control-trigger-value">原位</span>
+                    </button>
+                    <div id="inversion-editor" class="slider-editor" hidden>
+                        <div class="slider-editor-head">
+                            <span class="slider-editor-title">转位</span>
+                            <output id="inversion-output" class="slider-editor-value" for="inversion-range">原位</output>
+                        </div>
+                        <div class="slider-axis">
+                            <input id="inversion-range" class="linear-slider" type="range" min="0" max="2" step="1" value="0" aria-label="选择和弦转位模式">
+                            <div id="inversion-scale" class="slider-scale slider-scale-inversion"></div>
+                        </div>
+                    </div>
+                    <select id="inversion" class="visually-hidden">
+                        <option value="0" selected>原位</option>
+                        <option value="1">第一转位</option>
+                        <option value="2">第二转位</option>
+                    </select>
+                </section>
+
                 <section class="control-slider control-slider-voice" aria-label="音色设置">
                     <button type="button" id="voice-toggle" class="control-trigger" aria-expanded="false" aria-controls="voice-editor">
                         <span class="control-trigger-label">音色</span>

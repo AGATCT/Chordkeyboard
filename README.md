@@ -8,12 +8,13 @@ ChordKeyboard 是在浏览器中运行的和弦演奏工具，使用电脑键盘
 
 ## 音域和移调
 
-页面顶部提供了两个独立的离散控制：`移调` 和 `移八度`。
+页面顶部提供了三个独立的离散控制：`移调`、`移八度` 和 `转位`。
 
 - `移调` 用于改变所有和弦的主音。按钮会直接显示当前调性，例如 `C`、`F#`、`Bb`。
 - `移八度` 用于整体抬高或降低演奏音区。目前提供 4 个固定档位：`低两个八度`、`低一个八度`、`原始`、`高一个八度`。
+- `转位` 用于设置默认和弦排列方式，目前提供 3 个模式：`原位`、`第一转位`、`第二转位`。
 - 除了顶部的 `移八度` 控件，还可以使用方向键进行临时音域偏移：`ArrowUp` 临时升高一个八度，`ArrowDown` 临时降低一个八度，松开后恢复到当前设置的音域。
-- 还支持临时转位：`ArrowRight` 会把根音移到最上方，`ArrowLeft` 会把最高的和声音移到最下方；如果是七和弦，会保留最高位的七音不动。
+- 还支持临时相对转位：`ArrowRight` 会基于当前转位状态再做一次上转位，把当前最低音移到最上方；`ArrowLeft` 会基于当前转位状态再做一次下转位，把当前最高的和声音移到最下方。对于七和弦，如果这次被转位的是五音，则七音也会跟随做同方向转位；否则仍会保留顶部七音，改为移动次高音。松开后会回到当前按钮设置的转位模式。
 
 ![音域和移调面板](image/README/1775015463083.png)
 
@@ -48,8 +49,8 @@ ChordKeyboard 是在浏览器中运行的和弦演奏工具，使用电脑键盘
 
 - `ArrowUp`：临时升高一个八度
 - `ArrowDown`：临时降低一个八度
-- `ArrowRight`：临时上转位，把根音移到最上面
-- `ArrowLeft`：临时下转位，把最高的和声音移到最下面；七和弦会保留七音在顶部
+- `ArrowRight`：基于当前转位临时再上转一次，把当前最低音移到最上面
+- `ArrowLeft`：基于当前转位临时再下转一次，把当前最高的和声音移到最下面；七和弦中若五音被转下去，七音也会一起下行
 - 松开方向键后恢复当前设置的音域和转位
 
 ## 音源说明
@@ -62,7 +63,7 @@ ChordKeyboard 是在浏览器中运行的和弦演奏工具，使用电脑键盘
 
 1. 直接在浏览器中打开 [index.html](index.html)
 2. 点击页面任意位置以激活音频上下文
-3. 在顶部调整 `移调`、`移八度` 和 `音色`
+3. 在顶部调整 `移调`、`移八度`、`转位` 和 `音色`
 4. 按下页面标注的电脑键盘键位演奏和弦
 
 这个项目是纯前端静态页面，不需要构建步骤，也不依赖本地服务器。
@@ -83,12 +84,13 @@ ChordKeyboard is a browser-based chord-playing tool, controlled by computer keyb
 
 ## Range And Transposition
 
-At the top of the page there are two independent discrete controls: `Transposition` and `Octave Shift`. 
+At the top of the page there are three independent discrete controls: `Transposition`, `Octave Shift`, and `Inversion`. 
 
 - `Transposition` changes the tonic for all chords globally. The trigger button always shows the current key, such as `C`, `F#`, or `Bb`.
 - `Octave Shift` moves the entire playable register up or down. There are 4 fixed steps: `Down 2`, `Down 1`, `Original`, and `Up 1`.
+- `Inversion` sets the default chord voicing, with 3 modes: `Root Position`, `First Inversion`, and `Second Inversion`.
 - In addition to the top `Octave Shift` control, you can use the keyboard for temporary register offsets: `ArrowUp` raises by one octave and `ArrowDown` lowers by one octave until the key is released.
-- Temporary inversions are also supported: `ArrowRight` moves the root to the top, while `ArrowLeft` moves the highest chord tone to the bottom. For seventh chords, the top seventh stays in place.
+- Temporary relative inversions are also supported: `ArrowRight` applies one additional upward inversion on top of the current voicing, moving the current lowest note to the top, while `ArrowLeft` applies one additional downward inversion, moving the current highest chord tone to the bottom. In seventh chords, if the fifth is the note being inverted, the seventh follows in the same direction; otherwise a top seventh stays in place and the next-highest chord tone moves instead. Releasing the key returns to the configured inversion mode.
 
 ![Range and transposition panel](image/README/1775015463083.png)
 
@@ -123,8 +125,8 @@ Additional controls:
 
 - `ArrowUp`: temporary octave up
 - `ArrowDown`: temporary octave down
-- `ArrowRight`: temporary upward inversion, moving the root to the top
-- `ArrowLeft`: temporary downward inversion, moving the highest chord tone to the bottom while keeping the top seventh in seventh chords
+- `ArrowRight`: apply one additional temporary upward inversion from the current voicing, moving the current lowest note to the top
+- `ArrowLeft`: apply one additional temporary downward inversion from the current voicing; in seventh chords, if the fifth moves down, the seventh follows in the same direction
 - Releasing the arrow key restores the current configured range and inversion
 
 ## Audio Source
@@ -137,7 +139,7 @@ Additional controls:
 
 1. Open [index.html](index.html) directly in a browser
 2. Click anywhere on the page once to unlock the audio context
-3. Adjust `Transposition`, `Octave Shift`, and `Voice` from the top controls
+3. Adjust `Transposition`, `Octave Shift`, `Inversion`, and `Voice` from the top controls
 4. Press the labeled computer-keyboard keys to play chords
 
 This is a static frontend project. No build step or local server is required.

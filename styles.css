@@ -100,6 +100,10 @@ h1 {
     --editor-width: min(220px, calc(100vw - 48px));
 }
 
+.control-slider-inversion {
+    --editor-width: min(220px, calc(100vw - 48px));
+}
+
 .control-slider-voice {
     --editor-width: min(360px, calc(100vw - 48px));
 }
@@ -131,6 +135,10 @@ h1 {
 }
 
 .control-slider-octave .control-trigger {
+    align-self: flex-start;
+}
+
+.control-slider-inversion .control-trigger {
     align-self: flex-start;
 }
 
@@ -760,6 +768,7 @@ h1 {
 
     .control-slider-tonic,
     .control-slider-octave,
+    .control-slider-inversion,
     .control-slider-voice,
     .control-group-voice,
     .control-select-voice {

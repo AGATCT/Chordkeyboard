@@ -73,6 +73,13 @@
     const octaveOutputEl = document.getElementById('octave-output');
     const octaveRangeEl = document.getElementById('octave-range');
     const octaveScaleEl = document.getElementById('octave-scale');
+    const inversionSelect = document.getElementById('inversion');
+    const inversionToggleEl = document.getElementById('inversion-toggle');
+    const inversionCurrentEl = document.getElementById('inversion-current');
+    const inversionEditorEl = document.getElementById('inversion-editor');
+    const inversionOutputEl = document.getElementById('inversion-output');
+    const inversionRangeEl = document.getElementById('inversion-range');
+    const inversionScaleEl = document.getElementById('inversion-scale');
     const voiceToggleEl = document.getElementById('voice-toggle');
     const voiceCurrentEl = document.getElementById('voice-current');
     const voiceEditorEl = document.getElementById('voice-editor');
@@ -82,6 +89,7 @@
     const keyboardEl = document.getElementById('keyboard-visualization');
     const pianoEl = document.getElementById('piano-visualization');
     const octaveValues = [-24, -12, 0, 12];
+    const inversionValues = [0, 1, 2];
     const voiceChoiceMeta = {
         grand_piano: {
             short: '大钢琴',
@@ -230,6 +238,11 @@
         '0': { short: '原始', long: '原始音域', mark: '原始' },
         '12': { short: '高一组', long: '高一个八度', mark: '高一' }
     };
+    const inversionChoiceMeta = {
+        '0': { short: '原位', long: '原位', mark: '原位' },
+        '1': { short: '一转', long: '第一转位', mark: '一转' },
+        '2': { short: '二转', long: '第二转位', mark: '二转' }
+    };
 
     // 初始化选项
     for (let i = 0; i < 12; i++) {
@@ -310,6 +323,17 @@
         updateSliderScale(octaveScaleEl, rangeIndex);
     }
 
+    function updateInversionUI() {
+        const value = String(inversionSelect.value);
+        const meta = inversionChoiceMeta[value];
+        const rangeIndex = inversionValues.indexOf(Number(value));
+
+        inversionCurrentEl.textContent = meta.short;
+        inversionOutputEl.textContent = meta.long;
+        inversionRangeEl.value = String(rangeIndex);
+        updateSliderScale(inversionScaleEl, rangeIndex);
+    }
+
     function buildVoiceOptions() {
         if (!voiceOptionsEl) return;
 
@@ -361,6 +385,7 @@
         const controls = {
             tonic: { toggle: tonicToggleEl, editor: tonicEditorEl, focusTarget: tonicRangeEl },
             octave: { toggle: octaveToggleEl, editor: octaveEditorEl, focusTarget: octaveRangeEl },
+            inversion: { toggle: inversionToggleEl, editor: inversionEditorEl, focusTarget: inversionRangeEl },
             voice: {
                 toggle: voiceToggleEl,
                 editor: voiceEditorEl,
@@ -399,26 +424,89 @@
         return offset;
     }
 
-    function getModifierInversionShift() {
+    function normalizeChordVoicing(midis) {
+        return [...midis].sort((a, b) => a - b);
+    }
+
+    function getPitchClass(midi) {
+        return ((midi % 12) + 12) % 12;
+    }
+
+    function findHighestIndexByPitchClass(midis, pitchClass) {
+        for (let i = midis.length - 1; i >= 0; i -= 1) {
+            if (getPitchClass(midis[i]) === pitchClass) return i;
+        }
+        return -1;
+    }
+
+    function getTemporaryInversionDirection() {
         if (modifierKeys.arrowLeft === modifierKeys.arrowRight) return 0;
         return modifierKeys.arrowRight ? 1 : -1;
     }
 
-    function applyChordInversion(midis, info, inversionShift) {
-        if (inversionShift === 0 || midis.length < 2) return midis;
+    function moveLowestNoteToTop(midis, fifthPitchClass = null, seventhPitchClass = null) {
+        if (midis.length < 2) return normalizeChordVoicing(midis);
 
-        const nextMidis = [...midis];
+        const nextMidis = normalizeChordVoicing(midis);
+        const movingIndexes = [0];
 
-        if (inversionShift > 0) {
-            const [root, ...rest] = nextMidis;
-            return [...rest, root + 12];
+        if (
+            seventhPitchClass !== null &&
+            fifthPitchClass !== null &&
+            getPitchClass(nextMidis[0]) === fifthPitchClass
+        ) {
+            const seventhIndex = findHighestIndexByPitchClass(nextMidis, seventhPitchClass);
+            if (seventhIndex > 0) {
+                movingIndexes.push(seventhIndex);
+            }
         }
 
-        const movableTopIndex = info.offs.length >= 4
-            ? nextMidis.length - 2
-            : nextMidis.length - 1;
-        const [movedNote] = nextMidis.splice(movableTopIndex, 1);
-        return [movedNote - 12, ...nextMidis];
+        return normalizeChordVoicing(nextMidis.map((midi, index) => (
+            movingIndexes.includes(index) ? midi + 12 : midi
+        )));
+    }
+
+    function moveHighestNoteToBottom(midis, info, fifthPitchClass = null, seventhPitchClass = null) {
+        if (midis.length < 2) return normalizeChordVoicing(midis);
+
+        const nextMidis = normalizeChordVoicing(midis);
+        let movableTopIndex = nextMidis.length - 1;
+
+        if (
+            info.offs.length >= 4 &&
+            seventhPitchClass !== null &&
+            getPitchClass(nextMidis[movableTopIndex]) === seventhPitchClass &&
+            movableTopIndex > 0
+        ) {
+            movableTopIndex -= 1;
+        }
+
+        const movingIndexes = [movableTopIndex];
+
+        if (
+            seventhPitchClass !== null &&
+            fifthPitchClass !== null &&
+            getPitchClass(nextMidis[movableTopIndex]) === fifthPitchClass
+        ) {
+            const seventhIndex = findHighestIndexByPitchClass(nextMidis, seventhPitchClass);
+            if (seventhIndex > movableTopIndex) {
+                movingIndexes.push(seventhIndex);
+            }
+        }
+
+        return normalizeChordVoicing(nextMidis.map((midi, index) => (
+            movingIndexes.includes(index) ? midi - 12 : midi
+        )));
+    }
+
+    function applyConfiguredInversion(midis, info, inversionMode, fifthPitchClass, seventhPitchClass) {
+        if (inversionMode === 1) {
+            return moveLowestNoteToTop(midis, fifthPitchClass, seventhPitchClass);
+        }
+        if (inversionMode === 2) {
+            return moveHighestNoteToBottom(midis, info, fifthPitchClass, seventhPitchClass);
+        }
+        return normalizeChordVoicing(midis);
     }
 
     function getChordPlaybackState(key) {
@@ -429,11 +517,41 @@
         const octave = +octaveSelect.value;
         const voice = voiceSelect.value;
         const tempOctaveOffset = getModifierOctaveOffset();
-        const inversionShift = getModifierInversionShift();
-        const baseMidis = info.offs.map(offset => baseMidiC4 + offset + tonic + octave + tempOctaveOffset);
-        const midis = applyChordInversion(baseMidis, info, inversionShift);
+        const configuredInversionMode = Number(inversionSelect.value);
+        const temporaryInversionDirection = getTemporaryInversionDirection();
+        const baseMidis = normalizeChordVoicing(
+            info.offs.map(offset => baseMidiC4 + offset + tonic + octave + tempOctaveOffset)
+        );
+        const fifthPitchClass = info.offs.length >= 3
+            ? getPitchClass(baseMidis[2])
+            : null;
+        const seventhPitchClass = info.offs.length >= 4
+            ? getPitchClass(baseMidis[3])
+            : null;
+        let midis = applyConfiguredInversion(
+            baseMidis,
+            info,
+            configuredInversionMode,
+            fifthPitchClass,
+            seventhPitchClass
+        );
 
-        return { info, tonic, octave, voice, tempOctaveOffset, inversionShift, midis };
+        if (temporaryInversionDirection > 0) {
+            midis = moveLowestNoteToTop(midis, fifthPitchClass, seventhPitchClass);
+        } else if (temporaryInversionDirection < 0) {
+            midis = moveHighestNoteToBottom(midis, info, fifthPitchClass, seventhPitchClass);
+        }
+
+        return {
+            info,
+            tonic,
+            octave,
+            voice,
+            tempOctaveOffset,
+            configuredInversionMode,
+            temporaryInversionDirection,
+            midis
+        };
     }
 
     function toVisiblePianoMidis(midis) {
@@ -565,7 +683,7 @@
         const playbackState = getChordPlaybackState(key);
         if (!playbackState) return;
 
-        const { info, voice, inversionShift, midis } = playbackState;
+        const { info, voice, configuredInversionMode, temporaryInversionDirection, midis } = playbackState;
         const voicePreset = getVoicePreset(voice);
         
         // 如果是弦乐音色，先停止之前播放的音符
@@ -579,8 +697,10 @@
         let statusText = `播放：${info.name}（键 ${key.toUpperCase()}）`;
         if (modifierKeys.arrowUp) statusText += ' ↑+1八度';
         if (modifierKeys.arrowDown) statusText += ' ↓-1八度';
-        if (inversionShift > 0) statusText += ' →上转位';
-        if (inversionShift < 0) statusText += ' ←下转位';
+        statusText += ` ${inversionChoiceMeta[String(configuredInversionMode)].long}`;
+        if (temporaryInversionDirection !== 0) {
+            statusText += temporaryInversionDirection > 0 ? ' →临时上转位' : ' ←临时下转位';
+        }
         statusEl.textContent = statusText;
         
         // 确保音频已初始化
@@ -982,6 +1102,11 @@
         setSliderEditorOpen('octave', shouldOpen);
     });
 
+    inversionToggleEl.addEventListener('click', () => {
+        const shouldOpen = inversionEditorEl.hidden;
+        setSliderEditorOpen('inversion', shouldOpen);
+    });
+
     voiceToggleEl.addEventListener('click', () => {
         const shouldOpen = voiceEditorEl.hidden;
         setSliderEditorOpen('voice', shouldOpen);
@@ -996,6 +1121,11 @@
         setSelectValue(octaveSelect, nextValue);
     });
 
+    inversionRangeEl.addEventListener('input', () => {
+        const nextValue = inversionValues[Number(inversionRangeEl.value)];
+        setSelectValue(inversionSelect, nextValue);
+    });
+
     tonicSelect.addEventListener('change', () => {
         updateTonicUI();
     });
@@ -1004,11 +1134,15 @@
         updateOctaveUI();
     });
 
+    inversionSelect.addEventListener('change', () => {
+        updateInversionUI();
+    });
+
     voiceSelect.addEventListener('change', () => {
         updateVoiceUI();
     });
 
-    [tonicSelect, octaveSelect, voiceSelect].forEach(control => {
+    [tonicSelect, octaveSelect, inversionSelect, voiceSelect].forEach(control => {
         control.addEventListener('change', async () => {
             if (activeSet.size > 0) {
                 await replayActiveChords();
@@ -1028,9 +1162,15 @@
             label: octaveChoiceMeta[String(value)].mark,
             index
         })), index => setSelectValue(octaveSelect, octaveValues[index]));
+        buildSliderScale(inversionScaleEl, inversionValues.map((value, index) => ({
+            value: index,
+            label: inversionChoiceMeta[String(value)].mark,
+            index
+        })), index => setSelectValue(inversionSelect, inversionValues[index]));
         buildVoiceOptions();
         updateTonicUI();
         updateOctaveUI();
+        updateInversionUI();
         updateVoiceUI();
 
         // 创建键盘可视化
