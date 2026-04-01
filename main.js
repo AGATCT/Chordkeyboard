@@ -810,12 +810,13 @@
 
     function createKeyboardModifierKey({ key, symbol, label }) {
         const keyEl = document.createElement('div');
-        keyEl.className = 'keyboard-key keyboard-key-modifier';
+        keyEl.className = 'keyboard-key mapped keyboard-key-modifier';
         keyEl.id = 'key-' + key;
         keyEl.innerHTML = `
             <span class="key-label">${symbol}</span>
             <span class="chord-label modifier-label">${label}</span>
         `;
+        bindVirtualKeyPointerHandlers(keyEl, key, 'modifier');
         return keyEl;
     }
 
@@ -856,6 +857,7 @@
                     keyEl.classList.add('mapped');
                     const chordName = chordMap[key.toLowerCase()].name;
                     keyEl.innerHTML += `<span class="chord-label">${chordName}</span>`;
+                    bindVirtualKeyPointerHandlers(keyEl, key.toLowerCase(), 'chord');
                 }
                 
                 rowEl.appendChild(keyEl);
@@ -983,6 +985,19 @@
     }
 
     const activeSet = new Set();
+    const activeChordSources = new Map();
+    const modifierInputSources = {
+        ArrowUp: new Set(),
+        ArrowDown: new Set(),
+        ArrowLeft: new Set(),
+        ArrowRight: new Set()
+    };
+    const modifierKeyMap = {
+        ArrowUp: 'arrowUp',
+        ArrowDown: 'arrowDown',
+        ArrowLeft: 'arrowLeft',
+        ArrowRight: 'arrowRight'
+    };
     
     // 存储正在播放的音符（仅用于弦乐音色，以便在释放键时停止）
     const activePlayingNotes = new Map(); // key -> Array of audio nodes/notes
@@ -1001,6 +1016,101 @@
         arrowRight: false
     };
 
+    function getInputSourceSet(sourceMap, key) {
+        if (!sourceMap.has(key)) {
+            sourceMap.set(key, new Set());
+        }
+        return sourceMap.get(key);
+    }
+
+    async function pressChordInput(key, source) {
+        if (!chordMap[key]) return;
+
+        const sources = getInputSourceSet(activeChordSources, key);
+        if (sources.has(source)) return;
+
+        const wasActive = sources.size > 0;
+        sources.add(source);
+        if (wasActive) return;
+
+        activeSet.add(key);
+        setComputerKeyPressed(key, true);
+        await playChord(key);
+    }
+
+    function releaseChordInput(key, source) {
+        const sources = activeChordSources.get(key);
+        if (!sources || !sources.has(source)) return;
+
+        sources.delete(source);
+        if (sources.size > 0) return;
+
+        activeChordSources.delete(key);
+        releaseChord(key);
+    }
+
+    async function pressModifierInput(key, source) {
+        const sources = modifierInputSources[key];
+        const modifierKey = modifierKeyMap[key];
+        if (!sources || !modifierKey || sources.has(source)) return;
+
+        const wasActive = sources.size > 0;
+        sources.add(source);
+        if (wasActive) return;
+
+        modifierKeys[modifierKey] = true;
+        setComputerKeyPressed(key, true);
+        await replayActiveChords();
+    }
+
+    async function releaseModifierInput(key, source) {
+        const sources = modifierInputSources[key];
+        const modifierKey = modifierKeyMap[key];
+        if (!sources || !modifierKey || !sources.has(source)) return;
+
+        sources.delete(source);
+        if (sources.size > 0) return;
+
+        modifierKeys[modifierKey] = false;
+        setComputerKeyPressed(key, false);
+        await replayActiveChords();
+    }
+
+    function bindVirtualKeyPointerHandlers(keyEl, inputKey, inputType) {
+        if (!keyEl) return;
+
+        const releaseFromPointer = async ev => {
+            const source = `pointer:${ev.pointerId}`;
+            if (inputType === 'modifier') {
+                await releaseModifierInput(inputKey, source);
+            } else {
+                releaseChordInput(inputKey, source);
+            }
+
+            if (keyEl.hasPointerCapture?.(ev.pointerId)) {
+                keyEl.releasePointerCapture(ev.pointerId);
+            }
+        };
+
+        keyEl.addEventListener('pointerdown', async ev => {
+            if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+
+            ev.preventDefault();
+            keyEl.setPointerCapture?.(ev.pointerId);
+            const source = `pointer:${ev.pointerId}`;
+
+            if (inputType === 'modifier') {
+                await pressModifierInput(inputKey, source);
+            } else {
+                await pressChordInput(inputKey, source);
+            }
+        });
+
+        keyEl.addEventListener('pointerup', releaseFromPointer);
+        keyEl.addEventListener('pointercancel', releaseFromPointer);
+        keyEl.addEventListener('lostpointercapture', releaseFromPointer);
+    }
+
     function releaseChord(key) {
         activeSet.delete(key);
         releaseChordPianoNotes(key);
@@ -1009,10 +1119,12 @@
     }
 
     function releaseAllActiveChords() {
+        activeChordSources.clear();
         Array.from(activeSet).forEach(releaseChord);
     }
 
     function resetModifierKeys() {
+        Object.values(modifierInputSources).forEach(sourceSet => sourceSet.clear());
         modifierKeys.arrowUp = false;
         modifierKeys.arrowDown = false;
         modifierKeys.arrowLeft = false;
@@ -1037,42 +1149,22 @@
     window.addEventListener('keydown', async (ev) => {
         // 处理修饰键
         if (ev.key === 'ArrowUp') {
-            if (!modifierKeys.arrowUp) {
-                modifierKeys.arrowUp = true;
-                setComputerKeyPressed('ArrowUp', true);
-                // 重新播放当前按下的和弦
-                await replayActiveChords();
-            }
+            await pressModifierInput('ArrowUp', 'keyboard');
             ev.preventDefault();
             return;
         }
         if (ev.key === 'ArrowDown') {
-            if (!modifierKeys.arrowDown) {
-                modifierKeys.arrowDown = true;
-                setComputerKeyPressed('ArrowDown', true);
-                // 重新播放当前按下的和弦
-                await replayActiveChords();
-            }
+            await pressModifierInput('ArrowDown', 'keyboard');
             ev.preventDefault();
             return;
         }
         if (ev.key === 'ArrowLeft') {
-            if (!modifierKeys.arrowLeft) {
-                modifierKeys.arrowLeft = true;
-                setComputerKeyPressed('ArrowLeft', true);
-                // 重新播放当前按下的和弦
-                await replayActiveChords();
-            }
+            await pressModifierInput('ArrowLeft', 'keyboard');
             ev.preventDefault();
             return;
         }
         if (ev.key === 'ArrowRight') {
-            if (!modifierKeys.arrowRight) {
-                modifierKeys.arrowRight = true;
-                setComputerKeyPressed('ArrowRight', true);
-                // 重新播放当前按下的和弦
-                await replayActiveChords();
-            }
+            await pressModifierInput('ArrowRight', 'keyboard');
             ev.preventDefault();
             return;
         }
@@ -1082,57 +1174,29 @@
         const k = ev.key.toLowerCase();
         if (chordMap[k]) {
             ev.preventDefault();
-            
-            // 激活视觉反馈
-            activeSet.add(k);
-            
-            // 更新键盘可视化
-            setComputerKeyPressed(k, true);
-            
-            // 播放和弦
-            await playChord(k);
+            await pressChordInput(k, 'keyboard');
         }
     });
     
     window.addEventListener('keyup', async (ev) => {
         // 处理修饰键释放
         if (ev.key === 'ArrowUp') {
-            if (modifierKeys.arrowUp) {
-                modifierKeys.arrowUp = false;
-                setComputerKeyPressed('ArrowUp', false);
-                // 重新播放当前按下的和弦，恢复音高
-                await replayActiveChords();
-            }
+            await releaseModifierInput('ArrowUp', 'keyboard');
             ev.preventDefault();
             return;
         }
         if (ev.key === 'ArrowDown') {
-            if (modifierKeys.arrowDown) {
-                modifierKeys.arrowDown = false;
-                setComputerKeyPressed('ArrowDown', false);
-                // 重新播放当前按下的和弦，恢复音高
-                await replayActiveChords();
-            }
+            await releaseModifierInput('ArrowDown', 'keyboard');
             ev.preventDefault();
             return;
         }
         if (ev.key === 'ArrowLeft') {
-            if (modifierKeys.arrowLeft) {
-                modifierKeys.arrowLeft = false;
-                setComputerKeyPressed('ArrowLeft', false);
-                // 重新播放当前按下的和弦，恢复转位
-                await replayActiveChords();
-            }
+            await releaseModifierInput('ArrowLeft', 'keyboard');
             ev.preventDefault();
             return;
         }
         if (ev.key === 'ArrowRight') {
-            if (modifierKeys.arrowRight) {
-                modifierKeys.arrowRight = false;
-                setComputerKeyPressed('ArrowRight', false);
-                // 重新播放当前按下的和弦，恢复转位
-                await replayActiveChords();
-            }
+            await releaseModifierInput('ArrowRight', 'keyboard');
             ev.preventDefault();
             return;
         }
@@ -1141,7 +1205,7 @@
         if (!chordMap[k]) return;
 
         ev.preventDefault();
-        releaseChord(k);
+        releaseChordInput(k, 'keyboard');
     });
 
     window.addEventListener('blur', () => {
