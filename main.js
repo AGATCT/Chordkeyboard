@@ -399,6 +399,28 @@
         return offset;
     }
 
+    function getModifierInversionShift() {
+        if (modifierKeys.arrowLeft === modifierKeys.arrowRight) return 0;
+        return modifierKeys.arrowRight ? 1 : -1;
+    }
+
+    function applyChordInversion(midis, info, inversionShift) {
+        if (inversionShift === 0 || midis.length < 2) return midis;
+
+        const nextMidis = [...midis];
+
+        if (inversionShift > 0) {
+            const [root, ...rest] = nextMidis;
+            return [...rest, root + 12];
+        }
+
+        const movableTopIndex = info.offs.length >= 4
+            ? nextMidis.length - 2
+            : nextMidis.length - 1;
+        const [movedNote] = nextMidis.splice(movableTopIndex, 1);
+        return [movedNote - 12, ...nextMidis];
+    }
+
     function getChordPlaybackState(key) {
         const info = chordMap[key];
         if (!info) return null;
@@ -407,9 +429,11 @@
         const octave = +octaveSelect.value;
         const voice = voiceSelect.value;
         const tempOctaveOffset = getModifierOctaveOffset();
-        const midis = info.offs.map(offset => baseMidiC4 + offset + tonic + octave + tempOctaveOffset);
+        const inversionShift = getModifierInversionShift();
+        const baseMidis = info.offs.map(offset => baseMidiC4 + offset + tonic + octave + tempOctaveOffset);
+        const midis = applyChordInversion(baseMidis, info, inversionShift);
 
-        return { info, tonic, octave, voice, tempOctaveOffset, midis };
+        return { info, tonic, octave, voice, tempOctaveOffset, inversionShift, midis };
     }
 
     function toVisiblePianoMidis(midis) {
@@ -541,7 +565,7 @@
         const playbackState = getChordPlaybackState(key);
         if (!playbackState) return;
 
-        const { info, voice, midis } = playbackState;
+        const { info, voice, inversionShift, midis } = playbackState;
         const voicePreset = getVoicePreset(voice);
         
         // 如果是弦乐音色，先停止之前播放的音符
@@ -555,6 +579,8 @@
         let statusText = `播放：${info.name}（键 ${key.toUpperCase()}）`;
         if (modifierKeys.arrowUp) statusText += ' ↑+1八度';
         if (modifierKeys.arrowDown) statusText += ' ↓-1八度';
+        if (inversionShift > 0) statusText += ' →上转位';
+        if (inversionShift < 0) statusText += ' ←下转位';
         statusEl.textContent = statusText;
         
         // 确保音频已初始化
@@ -805,7 +831,9 @@
     // 修饰键状态追踪
     const modifierKeys = {
         arrowUp: false,
-        arrowDown: false
+        arrowDown: false,
+        arrowLeft: false,
+        arrowRight: false
     };
 
     function releaseChord(key) {
@@ -817,6 +845,13 @@
 
     function releaseAllActiveChords() {
         Array.from(activeSet).forEach(releaseChord);
+    }
+
+    function resetModifierKeys() {
+        modifierKeys.arrowUp = false;
+        modifierKeys.arrowDown = false;
+        modifierKeys.arrowLeft = false;
+        modifierKeys.arrowRight = false;
     }
     
     // 重新播放所有当前按下的和弦（用于修饰键变化时）
@@ -844,6 +879,24 @@
         if (ev.key === 'ArrowDown') {
             if (!modifierKeys.arrowDown) {
                 modifierKeys.arrowDown = true;
+                // 重新播放当前按下的和弦
+                await replayActiveChords();
+            }
+            ev.preventDefault();
+            return;
+        }
+        if (ev.key === 'ArrowLeft') {
+            if (!modifierKeys.arrowLeft) {
+                modifierKeys.arrowLeft = true;
+                // 重新播放当前按下的和弦
+                await replayActiveChords();
+            }
+            ev.preventDefault();
+            return;
+        }
+        if (ev.key === 'ArrowRight') {
+            if (!modifierKeys.arrowRight) {
+                modifierKeys.arrowRight = true;
                 // 重新播放当前按下的和弦
                 await replayActiveChords();
             }
@@ -888,6 +941,24 @@
             ev.preventDefault();
             return;
         }
+        if (ev.key === 'ArrowLeft') {
+            if (modifierKeys.arrowLeft) {
+                modifierKeys.arrowLeft = false;
+                // 重新播放当前按下的和弦，恢复转位
+                await replayActiveChords();
+            }
+            ev.preventDefault();
+            return;
+        }
+        if (ev.key === 'ArrowRight') {
+            if (modifierKeys.arrowRight) {
+                modifierKeys.arrowRight = false;
+                // 重新播放当前按下的和弦，恢复转位
+                await replayActiveChords();
+            }
+            ev.preventDefault();
+            return;
+        }
         
         const k = ev.key.toLowerCase();
         if (!chordMap[k]) return;
@@ -896,7 +967,10 @@
         releaseChord(k);
     });
 
-    window.addEventListener('blur', releaseAllActiveChords);
+    window.addEventListener('blur', () => {
+        releaseAllActiveChords();
+        resetModifierKeys();
+    });
 
     tonicToggleEl.addEventListener('click', () => {
         const shouldOpen = tonicEditorEl.hidden;

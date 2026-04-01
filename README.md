@@ -13,6 +13,7 @@ ChordKeyboard 是在浏览器中运行的和弦演奏工具，使用电脑键盘
 - `移调` 用于改变所有和弦的主音。按钮会直接显示当前调性，例如 `C`、`F#`、`Bb`。
 - `移八度` 用于整体抬高或降低演奏音区。目前提供 4 个固定档位：`低两个八度`、`低一个八度`、`原始`、`高一个八度`。
 - 除了顶部的 `移八度` 控件，还可以使用方向键进行临时音域偏移：`ArrowUp` 临时升高一个八度，`ArrowDown` 临时降低一个八度，松开后恢复到当前设置的音域。
+- 还支持临时转位：`ArrowRight` 会把根音移到最上方，`ArrowLeft` 会把最高的和声音移到最下方；如果是七和弦，会保留最高位的七音不动。
 
 ![音域和移调面板](image/README/1775015463083.png)
 
@@ -47,7 +48,9 @@ ChordKeyboard 是在浏览器中运行的和弦演奏工具，使用电脑键盘
 
 - `ArrowUp`：临时升高一个八度
 - `ArrowDown`：临时降低一个八度
-- 松开方向键后恢复当前设置的音域
+- `ArrowRight`：临时上转位，把根音移到最上面
+- `ArrowLeft`：临时下转位，把最高的和声音移到最下面；七和弦会保留七音在顶部
+- 松开方向键后恢复当前设置的音域和转位
 
 ## 音源说明
 
@@ -85,6 +88,7 @@ At the top of the page there are two independent discrete controls: `Transpositi
 - `Transposition` changes the tonic for all chords globally. The trigger button always shows the current key, such as `C`, `F#`, or `Bb`.
 - `Octave Shift` moves the entire playable register up or down. There are 4 fixed steps: `Down 2`, `Down 1`, `Original`, and `Up 1`.
 - In addition to the top `Octave Shift` control, you can use the keyboard for temporary register offsets: `ArrowUp` raises by one octave and `ArrowDown` lowers by one octave until the key is released.
+- Temporary inversions are also supported: `ArrowRight` moves the root to the top, while `ArrowLeft` moves the highest chord tone to the bottom. For seventh chords, the top seventh stays in place.
 
 ![Range and transposition panel](image/README/1775015463083.png)
 
@@ -119,7 +123,9 @@ Additional controls:
 
 - `ArrowUp`: temporary octave up
 - `ArrowDown`: temporary octave down
-- Releasing the arrow key restores the current configured range
+- `ArrowRight`: temporary upward inversion, moving the root to the top
+- `ArrowLeft`: temporary downward inversion, moving the highest chord tone to the bottom while keeping the top seventh in seventh chords
+- Releasing the arrow key restores the current configured range and inversion
 
 ## Audio Source
 
