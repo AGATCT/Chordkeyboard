@@ -17,6 +17,11 @@
     // 检查 soundfont-player
     let soundfontAvailable = false;
     const sfCache = {};
+    const sfLoadPromises = {};
+    const chordPlaybackTokens = new Map();
+    let chordPlaybackTokenSeq = 0;
+    let hasUnlockedAudio = false;
+    const pendingVoiceLoads = new Map();
     
     // 键位到和弦
     const chordMap = {
@@ -86,6 +91,10 @@
     const voiceOutputEl = document.getElementById('voice-output');
     const voiceOptionsEl = document.getElementById('voice-options');
     const statusEl = document.getElementById('status');
+    const voiceLoadingOverlayEl = document.getElementById('voice-loading-overlay');
+    const voiceLoadingTitleEl = document.getElementById('voice-loading-title');
+    const voiceLoadingDetailEl = document.getElementById('voice-loading-detail');
+    const voiceLoadingProgressEl = document.getElementById('voice-loading-progress');
     const keyboardEl = document.getElementById('keyboard-visualization');
     const pianoEl = document.getElementById('piano-visualization');
     const octaveValues = [-24, -12, 0, 12];
@@ -273,6 +282,82 @@
 
     function getVoicePreset(value = voiceSelect.value) {
         return voiceChoiceMeta[value] || voiceChoiceMeta.grand_piano;
+    }
+
+    function getVoiceLabel(value = voiceSelect.value) {
+        const meta = getVoicePreset(value);
+        return meta.long || meta.short || value;
+    }
+
+    function updateSoundfontAvailability() {
+        soundfontAvailable = typeof Soundfont !== 'undefined';
+        return soundfontAvailable;
+    }
+
+    function ensureAudioContext() {
+        if (ctx) return ctx;
+
+        ctx = new AudioContext();
+        isInitialized = true;
+        updateSoundfontAvailability();
+        console.log('Soundfont available:', soundfontAvailable);
+        return ctx;
+    }
+
+    function createChordPlaybackToken(key) {
+        const token = ++chordPlaybackTokenSeq;
+        chordPlaybackTokens.set(key, token);
+        return token;
+    }
+
+    function isChordPlaybackCurrent(key, token) {
+        return chordPlaybackTokens.get(key) === token && activeSet.has(key);
+    }
+
+    function getIdleStatusMessage() {
+        return hasUnlockedAudio
+            ? '切换音色会自动预加载，按下映射键即可演奏。'
+            : '切换音色会自动预加载，首次按键会自动启用音频。';
+    }
+
+    function updateStatusMessage(message) {
+        if (statusEl) {
+            statusEl.textContent = message;
+        }
+    }
+
+    function updateIdleStatusMessage() {
+        if (activeSet.size > 0 || pendingVoiceLoads.size > 0) return;
+        updateStatusMessage(getIdleStatusMessage());
+    }
+
+    function refreshVoiceLoadingOverlay() {
+        if (!voiceLoadingOverlayEl || !voiceLoadingTitleEl || !voiceLoadingDetailEl || !voiceLoadingProgressEl) {
+            return;
+        }
+
+        if (pendingVoiceLoads.size === 0) {
+            voiceLoadingOverlayEl.hidden = true;
+            voiceLoadingProgressEl.setAttribute('aria-valuetext', '音源未在加载');
+            return;
+        }
+
+        const pendingLoads = Array.from(pendingVoiceLoads.values());
+        const latestLoad = pendingLoads[pendingLoads.length - 1];
+        voiceLoadingTitleEl.textContent = `正在加载 ${latestLoad.label}`;
+        voiceLoadingDetailEl.textContent = latestLoad.detail;
+        voiceLoadingProgressEl.setAttribute('aria-valuetext', `${latestLoad.label} 音源加载中`);
+        voiceLoadingOverlayEl.hidden = false;
+    }
+
+    function beginVoiceLoading(voiceValue, detail = '正在准备当前音色资源...') {
+        const preset = getVoicePreset(voiceValue);
+        pendingVoiceLoads.set(preset.instrument, {
+            label: getVoiceLabel(voiceValue),
+            detail
+        });
+        refreshVoiceLoadingOverlay();
+        return preset.instrument;
     }
 
     function buildSliderScale(containerEl, items, onSelect) {
@@ -648,6 +733,101 @@
         return inst;
     }
 
+    async function initAudio() {
+        try {
+            ensureAudioContext();
+
+            if (ctx.state === 'suspended') {
+                await ctx.resume();
+            }
+
+            hasUnlockedAudio = ctx.state === 'running';
+
+            if (updateSoundfontAvailability()) {
+                void preloadVoice(voiceSelect.value);
+            }
+
+            updateIdleStatusMessage();
+            return hasUnlockedAudio;
+        } catch (error) {
+            console.error('Audio init failed:', error);
+            updateStatusMessage('音频初始化失败，已切换到基础音色。');
+            try {
+                if (!ctx) {
+                    ctx = new AudioContext();
+                    isInitialized = true;
+                }
+            } catch (fallbackError) {
+                console.error('AudioContext fallback failed:', fallbackError);
+            }
+
+            hasUnlockedAudio = Boolean(ctx) && ctx.state === 'running';
+            return false;
+        }
+    }
+
+    async function loadInstrument(name) {
+        ensureAudioContext();
+        if (!updateSoundfontAvailability()) throw new Error('Soundfont not available');
+        if (sfCache[name]) return sfCache[name];
+        if (sfLoadPromises[name]) return sfLoadPromises[name];
+
+        sfLoadPromises[name] = Soundfont.instrument(ctx, name)
+            .then(inst => {
+                sfCache[name] = inst;
+                return inst;
+            })
+            .finally(() => {
+                delete sfLoadPromises[name];
+            });
+
+        return sfLoadPromises[name];
+    }
+
+    async function preloadVoice(voiceValue = voiceSelect.value, options = {}) {
+        const { announce = false } = options;
+        const preset = getVoicePreset(voiceValue);
+        const label = getVoiceLabel(voiceValue);
+        let overlayKey = null;
+
+        try {
+            if (sfCache[preset.instrument]) return sfCache[preset.instrument];
+
+            ensureAudioContext();
+            if (!updateSoundfontAvailability()) return null;
+
+            overlayKey = beginVoiceLoading(
+                voiceValue,
+                announce ? '正在下载音源并写入缓存...' : '正在后台预热当前音色...'
+            );
+
+            const inst = await loadInstrument(preset.instrument);
+
+            if (announce && activeSet.size === 0 && voiceSelect.value === voiceValue) {
+                updateStatusMessage(`${label} 音色已就绪。`);
+            }
+
+            return inst;
+        } catch (err) {
+            console.warn('Voice preload failed, fallback will be used:', err);
+
+            if (announce && activeSet.size === 0 && voiceSelect.value === voiceValue) {
+                updateStatusMessage(`${label} 音源加载失败，已使用基础音色。`);
+            }
+
+            return null;
+        } finally {
+            if (overlayKey) {
+                pendingVoiceLoads.delete(overlayKey);
+                refreshVoiceLoadingOverlay();
+            }
+
+            if (pendingVoiceLoads.size === 0) {
+                updateIdleStatusMessage();
+            }
+        }
+    }
+
     // 停止和弦（用于弦乐音色）
     function stopChord(key) {
         const notes = activePlayingNotes.get(key);
@@ -665,9 +845,12 @@
                 } else if (node.gain) {
                     // fallback模式：停止oscillator
                     node.gain.gain.cancelScheduledValues(now);
-                    node.gain.gain.setValueAtTime(0, now);
+                    const releaseTime = node.releaseTime || 0.06;
+                    const currentGain = Math.max(node.gain.gain.value, 0.0001);
+                    node.gain.gain.setValueAtTime(currentGain, now);
+                    node.gain.gain.exponentialRampToValueAtTime(0.0001, now + releaseTime);
                     if (node.osc) {
-                        node.osc.stop(now);
+                        node.osc.stop(now + releaseTime + 0.01);
                     }
                 }
             } catch (e) {
@@ -676,6 +859,23 @@
             }
         });
         activePlayingNotes.delete(key);
+    }
+
+    function getFallbackOscillatorType(voicePreset) {
+        if (voicePreset.sustained) {
+            return voicePreset.fallbackType === 'sine' ? 'sine' : 'triangle';
+        }
+
+        if (voicePreset.fallbackType === 'triangle' || voicePreset.fallbackType === 'sine') {
+            return voicePreset.fallbackType;
+        }
+
+        return 'triangle';
+    }
+
+    function getFallbackPeakGain(voicePreset, noteIndex) {
+        const baseGain = voicePreset.sustained ? 0.16 : 0.14;
+        return baseGain / (1 + noteIndex * 0.45);
     }
     
     // 播放和弦
@@ -762,36 +962,119 @@
             const freq = midiToFreq(midi);
             const osc = ctx.createOscillator();
             const g = ctx.createGain();
+            const filter = ctx.createBiquadFilter();
             
-            const type = i === 0 && !voicePreset.sustained && voicePreset.fallbackType === 'triangle'
-                ? 'square'
-                : voicePreset.fallbackType;
-            const attack = voicePreset.attack;
-            const release = voicePreset.release;
+            const type = getFallbackOscillatorType(voicePreset);
+            const attack = Math.max(voicePreset.attack, voicePreset.sustained ? 0.05 : 0.012);
+            const release = voicePreset.sustained
+                ? Math.min(Math.max(voicePreset.release * 0.72, 0.5), 1.35)
+                : Math.min(Math.max(voicePreset.release * 0.55, 0.24), 0.72);
+            const peakGain = getFallbackPeakGain(voicePreset, i);
             
             osc.type = type; 
             osc.frequency.value = freq;
+            filter.type = 'lowpass';
+            filter.frequency.value = voicePreset.sustained ? 1700 : 2400;
+            filter.Q.value = 0.35;
             
             if (voicePreset.sustained) {
                 // 弦乐音色：持续播放，不自动停止
                 g.gain.setValueAtTime(0.0001, now);
-                g.gain.linearRampToValueAtTime(0.9 / (i + 1), now + attack);
-                g.gain.setValueAtTime(0.9 / (i + 1), now + attack + 0.01);
-                nodes.push({ osc, gain: g });
+                g.gain.linearRampToValueAtTime(peakGain, now + attack);
+                g.gain.setValueAtTime(peakGain, now + attack + 0.01);
+                nodes.push({ osc, gain: g, releaseTime: 0.08 });
             } else {
                 // 钢琴音色：自动停止
                 g.gain.setValueAtTime(0.0001, now);
-                g.gain.linearRampToValueAtTime(0.9 / (i + 1), now + attack);
+                g.gain.linearRampToValueAtTime(peakGain, now + attack);
                 g.gain.exponentialRampToValueAtTime(0.0001, now + attack + release);
                 osc.stop(now + attack + release + 0.05);
             }
             
-            osc.connect(g);
+            osc.connect(filter);
+            filter.connect(g);
             g.connect(ctx.destination);
             osc.start(now);
         });
         
         return nodes;
+    }
+
+    async function playChord(key) {
+        const playbackState = getChordPlaybackState(key);
+        if (!playbackState) return;
+
+        const playbackToken = createChordPlaybackToken(key);
+        const { info, voice, configuredInversionMode, temporaryInversionDirection, midis } = playbackState;
+        const voicePreset = getVoicePreset(voice);
+
+        if (voicePreset.sustained) {
+            stopChord(key);
+        }
+
+        setChordPianoNotes(key, midis);
+
+        let statusText = `播放：${info.name}（键 ${key.toUpperCase()}）`;
+        if (modifierKeys.arrowUp) statusText += ' ↑+1八度';
+        if (modifierKeys.arrowDown) statusText += ' ↓-1八度';
+        statusText += ` ${inversionChoiceMeta[String(configuredInversionMode)].long}`;
+        if (temporaryInversionDirection !== 0) {
+            statusText += temporaryInversionDirection > 0 ? ' →临时上转位' : ' ←临时下转位';
+        }
+        updateStatusMessage(statusText);
+
+        try {
+            ensureAudioContext();
+
+            if (!hasUnlockedAudio || ctx.state === 'suspended') {
+                await initAudio();
+            }
+        } catch (error) {
+            console.warn('Audio unlock failed, fallback will be used:', error);
+        }
+
+        if (!ctx || !isChordPlaybackCurrent(key, playbackToken)) return;
+
+        const now = ctx.currentTime;
+        const playingNotes = [];
+
+        if (updateSoundfontAvailability()) {
+            const instName = voicePreset.instrument;
+            const inst = sfCache[instName];
+
+            if (inst) {
+                try {
+                    midis.forEach((midi, i) => {
+                        const note = midiToNoteName(midi);
+                        const soundfontPlayOptions = voicePreset.sustained
+                            ? { gain: 0.85 / (i + 1) }
+                            : { gain: 0.85 / (i + 1), duration: Math.max(1.2, voicePreset.release + 0.9) };
+
+                        const audioNode = inst.play(note, now, soundfontPlayOptions);
+                        if (voicePreset.sustained && audioNode) {
+                            playingNotes.push(audioNode);
+                        }
+                    });
+
+                    if (voicePreset.sustained && playingNotes.length > 0) {
+                        activePlayingNotes.set(key, playingNotes);
+                    }
+                    return;
+                } catch (err) {
+                    console.warn('Soundfont playback failed, fallback will be used:', err);
+                }
+            } else {
+                void preloadVoice(voice);
+                updateStatusMessage(`${statusText} · 音源加载中，先用柔和回退音色`);
+            }
+        }
+
+        if (!isChordPlaybackCurrent(key, playbackToken)) return;
+
+        const fallbackNotes = playChordFallback(midis, voicePreset);
+        if (voicePreset.sustained && fallbackNotes.length > 0) {
+            activePlayingNotes.set(key, fallbackNotes);
+        }
     }
 
     // QWERTY 键盘布局（标准布局）
@@ -998,6 +1281,7 @@
         ArrowLeft: 'arrowLeft',
         ArrowRight: 'arrowRight'
     };
+    const activeKeyboardPointerIds = new Set();
     
     // 存储正在播放的音符（仅用于弦乐音色，以便在释放键时停止）
     const activePlayingNotes = new Map(); // key -> Array of audio nodes/notes
@@ -1076,10 +1360,37 @@
         await replayActiveChords();
     }
 
+    function clearActiveTextSelection() {
+        const selection = window.getSelection?.();
+        if (!selection || selection.rangeCount === 0) return;
+        selection.removeAllRanges();
+    }
+
+    function syncKeyboardTouchState() {
+        document.body.classList.toggle('keyboard-touch-active', activeKeyboardPointerIds.size > 0);
+        if (activeKeyboardPointerIds.size > 0) {
+            clearActiveTextSelection();
+        }
+    }
+
+    function setKeyboardPointerActive(pointerId, isActive) {
+        if (isActive) {
+            activeKeyboardPointerIds.add(pointerId);
+        } else {
+            activeKeyboardPointerIds.delete(pointerId);
+        }
+
+        syncKeyboardTouchState();
+    }
+
     function bindVirtualKeyPointerHandlers(keyEl, inputKey, inputType) {
         if (!keyEl) return;
 
         const releaseFromPointer = async ev => {
+            if (ev.pointerType !== 'mouse') {
+                setKeyboardPointerActive(ev.pointerId, false);
+            }
+
             const source = `pointer:${ev.pointerId}`;
             if (inputType === 'modifier') {
                 await releaseModifierInput(inputKey, source);
@@ -1096,6 +1407,9 @@
             if (ev.pointerType === 'mouse' && ev.button !== 0) return;
 
             ev.preventDefault();
+            if (ev.pointerType !== 'mouse') {
+                setKeyboardPointerActive(ev.pointerId, true);
+            }
             keyEl.setPointerCapture?.(ev.pointerId);
             const source = `pointer:${ev.pointerId}`;
 
@@ -1112,6 +1426,7 @@
     }
 
     function releaseChord(key) {
+        chordPlaybackTokens.delete(key);
         activeSet.delete(key);
         releaseChordPianoNotes(key);
         stopChord(key);
@@ -1209,6 +1524,8 @@
     });
 
     window.addEventListener('blur', () => {
+        activeKeyboardPointerIds.clear();
+        syncKeyboardTouchState();
         releaseAllActiveChords();
         resetModifierKeys();
     });
@@ -1261,6 +1578,7 @@
 
     voiceSelect.addEventListener('change', () => {
         updateVoiceUI();
+        void preloadVoice(voiceSelect.value, { announce: activeSet.size === 0 });
     });
 
     [tonicSelect, octaveSelect, inversionSelect, voiceSelect].forEach(control => {
@@ -1301,13 +1619,14 @@
         window.addEventListener('resize', handleViewportLayoutChange);
         
         // 更新状态提示
-        statusEl.textContent = '点击任意和弦或按键盘键开始演奏（需要用户交互激活音频）';
+        updateIdleStatusMessage();
+        void preloadVoice(voiceSelect.value, { announce: true });
         
         // 添加页面点击激活音频
         document.addEventListener('click', async () => {
-            if (!isInitialized) {
+            if (!hasUnlockedAudio) {
                 await initAudio();
-                statusEl.textContent = '音频已激活！可以开始演奏和弦。';
+                updateIdleStatusMessage();
             }
         }, { once: true });
         
@@ -1315,6 +1634,7 @@
         const checkSoundfont = setInterval(() => {
             if (typeof Soundfont !== 'undefined') {
                 soundfontAvailable = true;
+                void preloadVoice(voiceSelect.value, { announce: true });
                 console.log('Soundfont-player 已加载');
                 clearInterval(checkSoundfont);
             }
@@ -1324,6 +1644,18 @@
         setTimeout(() => clearInterval(checkSoundfont), 10000);
         
         console.log('ChordKeyboard 已加载。按 1-7 或 Q/Y 等键演奏和弦');
+    });
+
+    keyboardEl.addEventListener('contextmenu', ev => {
+        ev.preventDefault();
+    });
+
+    keyboardEl.addEventListener('selectstart', ev => {
+        ev.preventDefault();
+    });
+
+    keyboardEl.addEventListener('dragstart', ev => {
+        ev.preventDefault();
     });
 
     document.addEventListener('click', (ev) => {

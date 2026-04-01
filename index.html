@@ -117,6 +117,19 @@
         <div id="piano-visualization"></div>
     </section>
 
+    <aside id="voice-loading-overlay" class="voice-loading-overlay" hidden aria-live="polite" aria-atomic="true">
+        <div class="voice-loading-card">
+            <div class="voice-loading-spinner" aria-hidden="true"></div>
+            <div class="voice-loading-copy">
+                <div id="voice-loading-title" class="voice-loading-title">Loading voice</div>
+                <div id="voice-loading-detail" class="voice-loading-detail">Preparing instrument assets...</div>
+                <div id="voice-loading-progress" class="voice-loading-progress" role="progressbar" aria-label="Voice loading" aria-valuemin="0" aria-valuemax="100" aria-valuetext="Voice loading">
+                    <div class="voice-loading-progress-fill"></div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
     <script src="main.js"></script>
     <!-- soundfont-player: 从 CDN 加载，用于更真实的钢琴/弦乐音色 -->
     <!-- <script src="https://unpkg.com/soundfont-player@0.15.5/dist/soundfont-player.js"></script> -->
