@@ -801,11 +801,34 @@
         ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\''],
         ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/']
     ];
+    const modifierKeyMeta = [
+        { key: 'ArrowUp', symbol: '↑', label: '升八度', row: 'top' },
+        { key: 'ArrowLeft', symbol: '←', label: '下转位', row: 'bottom' },
+        { key: 'ArrowDown', symbol: '↓', label: '降八度', row: 'bottom' },
+        { key: 'ArrowRight', symbol: '→', label: '上转位', row: 'bottom' }
+    ];
+
+    function createKeyboardModifierKey({ key, symbol, label }) {
+        const keyEl = document.createElement('div');
+        keyEl.className = 'keyboard-key keyboard-key-modifier';
+        keyEl.id = 'key-' + key;
+        keyEl.innerHTML = `
+            <span class="key-label">${symbol}</span>
+            <span class="chord-label modifier-label">${label}</span>
+        `;
+        return keyEl;
+    }
 
     // 创建可视化键盘
     function createKeyboardVisualization() {
+        keyboardEl.innerHTML = '';
+
         const keyboardContainer = document.createElement('div');
         keyboardContainer.className = 'keyboard-container';
+        const keyboardLayoutEl = document.createElement('div');
+        keyboardLayoutEl.className = 'keyboard-layout';
+        const keyboardMainEl = document.createElement('div');
+        keyboardMainEl.className = 'keyboard-main';
         
         keyboardLayout.forEach((row, rowIndex) => {
             const rowEl = document.createElement('div');
@@ -838,8 +861,30 @@
                 rowEl.appendChild(keyEl);
             });
             
-            keyboardContainer.appendChild(rowEl);
+            keyboardMainEl.appendChild(rowEl);
         });
+
+        const modifierPadEl = document.createElement('div');
+        modifierPadEl.className = 'keyboard-modifier-pad';
+        const modifierTopRowEl = document.createElement('div');
+        modifierTopRowEl.className = 'keyboard-modifier-row keyboard-modifier-row-top';
+        const modifierBottomRowEl = document.createElement('div');
+        modifierBottomRowEl.className = 'keyboard-modifier-row keyboard-modifier-row-bottom';
+
+        modifierKeyMeta.forEach(meta => {
+            const keyEl = createKeyboardModifierKey(meta);
+            if (meta.row === 'top') {
+                modifierTopRowEl.appendChild(keyEl);
+            } else {
+                modifierBottomRowEl.appendChild(keyEl);
+            }
+        });
+
+        modifierPadEl.appendChild(modifierTopRowEl);
+        modifierPadEl.appendChild(modifierBottomRowEl);
+        keyboardLayoutEl.appendChild(keyboardMainEl);
+        keyboardLayoutEl.appendChild(modifierPadEl);
+        keyboardContainer.appendChild(keyboardLayoutEl);
         
         keyboardEl.appendChild(keyboardContainer);
     }
@@ -972,6 +1017,10 @@
         modifierKeys.arrowDown = false;
         modifierKeys.arrowLeft = false;
         modifierKeys.arrowRight = false;
+        setComputerKeyPressed('ArrowUp', false);
+        setComputerKeyPressed('ArrowDown', false);
+        setComputerKeyPressed('ArrowLeft', false);
+        setComputerKeyPressed('ArrowRight', false);
     }
     
     // 重新播放所有当前按下的和弦（用于修饰键变化时）
@@ -990,6 +1039,7 @@
         if (ev.key === 'ArrowUp') {
             if (!modifierKeys.arrowUp) {
                 modifierKeys.arrowUp = true;
+                setComputerKeyPressed('ArrowUp', true);
                 // 重新播放当前按下的和弦
                 await replayActiveChords();
             }
@@ -999,6 +1049,7 @@
         if (ev.key === 'ArrowDown') {
             if (!modifierKeys.arrowDown) {
                 modifierKeys.arrowDown = true;
+                setComputerKeyPressed('ArrowDown', true);
                 // 重新播放当前按下的和弦
                 await replayActiveChords();
             }
@@ -1008,6 +1059,7 @@
         if (ev.key === 'ArrowLeft') {
             if (!modifierKeys.arrowLeft) {
                 modifierKeys.arrowLeft = true;
+                setComputerKeyPressed('ArrowLeft', true);
                 // 重新播放当前按下的和弦
                 await replayActiveChords();
             }
@@ -1017,6 +1069,7 @@
         if (ev.key === 'ArrowRight') {
             if (!modifierKeys.arrowRight) {
                 modifierKeys.arrowRight = true;
+                setComputerKeyPressed('ArrowRight', true);
                 // 重新播放当前按下的和弦
                 await replayActiveChords();
             }
@@ -1046,6 +1099,7 @@
         if (ev.key === 'ArrowUp') {
             if (modifierKeys.arrowUp) {
                 modifierKeys.arrowUp = false;
+                setComputerKeyPressed('ArrowUp', false);
                 // 重新播放当前按下的和弦，恢复音高
                 await replayActiveChords();
             }
@@ -1055,6 +1109,7 @@
         if (ev.key === 'ArrowDown') {
             if (modifierKeys.arrowDown) {
                 modifierKeys.arrowDown = false;
+                setComputerKeyPressed('ArrowDown', false);
                 // 重新播放当前按下的和弦，恢复音高
                 await replayActiveChords();
             }
@@ -1064,6 +1119,7 @@
         if (ev.key === 'ArrowLeft') {
             if (modifierKeys.arrowLeft) {
                 modifierKeys.arrowLeft = false;
+                setComputerKeyPressed('ArrowLeft', false);
                 // 重新播放当前按下的和弦，恢复转位
                 await replayActiveChords();
             }
@@ -1073,6 +1129,7 @@
         if (ev.key === 'ArrowRight') {
             if (modifierKeys.arrowRight) {
                 modifierKeys.arrowRight = false;
+                setComputerKeyPressed('ArrowRight', false);
                 // 重新播放当前按下的和弦，恢复转位
                 await replayActiveChords();
             }

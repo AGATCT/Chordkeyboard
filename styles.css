@@ -551,10 +551,46 @@ h1 {
     padding: 8px 0 4px;
 }
 
+.keyboard-layout {
+    display: flex;
+    align-items: flex-end;
+    gap: 18px;
+    width: max-content;
+    min-width: 100%;
+}
+
+.keyboard-main {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
 .keyboard-row {
     display: flex;
     gap: 7px;
     justify-content: flex-start;
+}
+
+.keyboard-modifier-pad {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    align-self: flex-end;
+    min-width: 176px;
+    padding-bottom: 2px;
+}
+
+.keyboard-modifier-row {
+    display: flex;
+    gap: 7px;
+}
+
+.keyboard-modifier-row-top {
+    justify-content: center;
+}
+
+.keyboard-modifier-row-bottom {
+    justify-content: center;
 }
 
 .keyboard-key {
@@ -608,6 +644,20 @@ h1 {
 
 .keyboard-key.mapped .key-label {
     color: var(--accent);
+}
+
+.keyboard-key-modifier {
+    background: linear-gradient(180deg, #f8f1e8 0%, #efe0cf 100%);
+    border-color: #c8b199;
+}
+
+.keyboard-key-modifier .key-label {
+    color: var(--accent-deep);
+}
+
+.modifier-label {
+    color: var(--text-soft);
+    font-size: 11px;
 }
 
 /* 特殊键的宽度调整 */
