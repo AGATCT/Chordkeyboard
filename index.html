@@ -10,31 +10,92 @@
 
 <body>
     <main>
-        <h1>ChordKeyboard</h1>
-        <div class="controls">
-            <label>主音（移调）
-                <select id="tonic">
-                </select>
-            </label>
-            <label>音域（移八度）
-                <select id="octave">
-                    <option value="-24">低两个八度</option>
-                    <option value="-12">低一个八度</option>
-                    <option value="0" selected>原始</option>
-                    <option value="12">高一个八度</option>
-                </select>
-            </label>
-            <label>音色
-                <select id="voice">
-                    <option value="piano">钢琴</option>
-                    <option value="strings">弦乐</option>
-                </select>
-            </label>
-        </div>
+        <header class="top-bar">
+            <h1>ChordKeyboard</h1>
+            <div class="controls">
+                <section class="control-slider control-slider-tonic" aria-label="移调设置">
+                    <button type="button" id="tonic-toggle" class="control-trigger" aria-expanded="false" aria-controls="tonic-editor">
+                        <span class="control-trigger-label">移调</span>
+                        <span id="tonic-current" class="control-trigger-value">C</span>
+                    </button>
+                    <div id="tonic-editor" class="slider-editor" hidden>
+                        <div class="slider-editor-head">
+                            <span class="slider-editor-title">主音</span>
+                            <output id="tonic-output" class="slider-editor-value" for="tonic-range">C</output>
+                        </div>
+                        <div class="slider-axis">
+                            <input id="tonic-range" class="linear-slider" type="range" min="0" max="11" step="1" value="0" aria-label="选择主音">
+                            <div id="tonic-scale" class="slider-scale slider-scale-tonic"></div>
+                        </div>
+                    </div>
+                    <select id="tonic" class="visually-hidden">
+                    </select>
+                </section>
+
+                <section class="control-slider control-slider-octave" aria-label="音域设置">
+                    <button type="button" id="octave-toggle" class="control-trigger" aria-expanded="false" aria-controls="octave-editor">
+                        <span class="control-trigger-label">移八度</span>
+                        <span id="octave-current" class="control-trigger-value">原始</span>
+                    </button>
+                    <div id="octave-editor" class="slider-editor" hidden>
+                        <div class="slider-editor-head">
+                            <span class="slider-editor-title">音域</span>
+                            <output id="octave-output" class="slider-editor-value" for="octave-range">原始</output>
+                        </div>
+                        <div class="slider-axis">
+                            <input id="octave-range" class="linear-slider" type="range" min="0" max="3" step="1" value="2" aria-label="选择音域">
+                            <div id="octave-scale" class="slider-scale slider-scale-octave"></div>
+                        </div>
+                    </div>
+                    <select id="octave" class="visually-hidden">
+                        <option value="-24">低两个八度</option>
+                        <option value="-12">低一个八度</option>
+                        <option value="0" selected>原始</option>
+                        <option value="12">高一个八度</option>
+                    </select>
+                </section>
+
+                <section class="control-slider control-slider-voice" aria-label="音色设置">
+                    <button type="button" id="voice-toggle" class="control-trigger" aria-expanded="false" aria-controls="voice-editor">
+                        <span class="control-trigger-label">音色</span>
+                        <span id="voice-current" class="control-trigger-value">钢琴</span>
+                    </button>
+                    <div id="voice-editor" class="slider-editor voice-editor" hidden>
+                        <div class="slider-editor-head">
+                            <span class="slider-editor-title">音色</span>
+                            <output id="voice-output" class="slider-editor-value" for="voice">钢琴</output>
+                        </div>
+                        <div id="voice-options" class="voice-options" role="listbox" aria-label="选择音色"></div>
+                    </div>
+                    <select id="voice" class="visually-hidden">
+                        <option value="grand_piano" selected>大钢琴</option>
+                        <option value="bright_piano">明亮钢琴</option>
+                        <option value="electric_piano_1">电钢琴 I</option>
+                        <option value="electric_piano_2">电钢琴 II</option>
+                        <option value="strings_ensemble_1">弦乐合奏 I</option>
+                        <option value="strings_ensemble_2">弦乐合奏 II</option>
+                        <option value="drawbar_organ">击杆风琴</option>
+                        <option value="church_organ">教堂管风琴</option>
+                        <option value="warm_pad">Warm Pad</option>
+                        <option value="polysynth_pad">Polysynth Pad</option>
+                        <option value="choir_aahs">Choir Aahs</option>
+                        <option value="voice_oohs">Voice Oohs</option>
+                    </select>
+                </section>
+            </div>
+        </header>
 
         <div id="keyboard-visualization"></div>
         <div id="status">按下映射键演奏和弦（打开浏览器控制台可查看调试信息）。</div>
     </main>
+
+    <section id="piano-panel" aria-label="88键钢琴可视化">
+        <div class="panel-heading">
+            <h2>88键钢琴演奏可视化</h2>
+            <p>默认会铺满页面底部，只有窄屏时才需要左右滑动查看完整键盘。</p>
+        </div>
+        <div id="piano-visualization"></div>
+    </section>
 
     <script src="main.js"></script>
     <!-- soundfont-player: 从 CDN 加载，用于更真实的钢琴/弦乐音色 -->
