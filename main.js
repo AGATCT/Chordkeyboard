@@ -193,15 +193,35 @@
             attack: 0.26,
             release: 2
         },
-        voice_oohs: {
-            short: 'Oohs',
-            long: 'Voice Oohs',
-            hint: '更圆更暗',
-            instrument: 'voice_oohs',
+        cello: {
+            short: 'Cello',
+            long: 'Cello',
+            hint: '温暖厚实',
+            instrument: 'cello',
             sustained: true,
             fallbackType: 'triangle',
-            attack: 0.24,
-            release: 1.9
+            attack: 0.12,
+            release: 1.7
+        },
+        french_horn: {
+            short: 'Horn',
+            long: 'French Horn',
+            hint: '庄重宽广',
+            instrument: 'french_horn',
+            sustained: true,
+            fallbackType: 'sawtooth',
+            attack: 0.1,
+            release: 1.5
+        },
+        clarinet: {
+            short: 'Clarinet',
+            long: 'Clarinet',
+            hint: '木管质感',
+            instrument: 'clarinet',
+            sustained: true,
+            fallbackType: 'square',
+            attack: 0.06,
+            release: 1.25
         }
     };
     const octaveChoiceMeta = {
